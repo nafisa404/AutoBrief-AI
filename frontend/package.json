@@ -15,7 +15,7 @@
   "scripts": {
     "start": "react-scripts start"
   },
-  "proxy": "http://localhost:8000",
+  "proxy": "https://autobrief-backend.onrender.com",
   "browserslist": {
     "production": [
       ">0.2%",
