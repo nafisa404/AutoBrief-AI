@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { FaFire, FaExclamationTriangle } from "react-icons/fa";
+import { FaExclamationTriangle } from "react-icons/fa";
 import "./App.css";
 
 function App() {
@@ -14,14 +14,26 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
+
     const data = await res.json();
     setSummary(data.summary);
     setRisks(data.risks);
+
+    // ✅ Save to localStorage
+    saveToHistory(data.summary, data.risks);
+  };
+
+  // ✅ Save current summary + risks to localStorage
+  const saveToHistory = (summary, risks) => {
+    const old = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
+    const updated = [{ summary, risks, date: new Date() }, ...old];
+    localStorage.setItem("autobrief_history", JSON.stringify(updated));
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-slate-800 to-gray-900 text-white p-10">
-      <motion.h1 className="text-5xl font-bold text-center mb-10"
+      <motion.h1
+        className="text-5xl font-bold text-center mb-10"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
       >
