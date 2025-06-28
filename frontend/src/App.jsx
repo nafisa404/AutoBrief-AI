@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { FaExclamationTriangle, FaMicrophone } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
 import { summarizeText } from "./services/api";
-import "./styles/App.css";
 
 function App() {
   const [text, setText] = useState("");
