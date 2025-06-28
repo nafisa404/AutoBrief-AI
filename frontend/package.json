@@ -2,11 +2,11 @@
   "name": "autobrief-frontend",
   "version": "1.0.0",
   "private": true,
-  "proxy": "https://autobrief-backend.onrender.com",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build"
   },
+  "proxy": "https://autobrief-backend.onrender.com",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -19,18 +19,5 @@
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.3"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   }
 }
-

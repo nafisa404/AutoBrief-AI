@@ -1,7 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.granite_client import summarize_text, summarize_audio
-from app.utils.preprocess import validate_text_input
+from app.services.granite_client import summarize_with_granite
+from app.services.risk_engine import extract_risks
 
 router = APIRouter()
 
@@ -9,11 +9,10 @@ class TextRequest(BaseModel):
     text: str
 
 @router.post("/text/")
-async def text_endpoint(req: TextRequest):
-    validate_text_input(req.text)
-    return summarize_text(req.text)
-
-@router.post("/audio/")
-async def audio_endpoint(file: UploadFile = File(...)):
-    audio_bytes = await file.read()
-    return summarize_audio(audio_bytes)
+def summarize_text(request: TextRequest):
+    summary = summarize_with_granite(request.text)
+    risks = extract_risks(summary)
+    return {
+        "summary": summary,
+        "risks": risks
+    }

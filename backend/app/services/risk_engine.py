@@ -1,5 +1,12 @@
-import re
-KEYWORDS = ["compliance","fraud","inflation","regulatory","cybersecurity","geopolitical"]
-def extract_risks(text: str):
-    found = [kw for kw in KEYWORDS if re.search(rf"\b{kw}\b", text.lower())]
-    return found or ["none detected"]
+RISK_KEYWORDS = [
+    "lawsuit", "fraud", "hack", "cyberattack", "layoff", "regulation",
+    "compliance", "penalty", "breach", "financial loss", "downturn"
+]
+
+def extract_risks(summary: str):
+    detected = []
+    lowered = summary.lower()
+    for keyword in RISK_KEYWORDS:
+        if keyword in lowered:
+            detected.append(keyword)
+    return list(set(detected))
