@@ -1,4 +1,4 @@
-const BASE_URL = "https://autobrief-ai-backend.onrender.com/";
+const BASE_URL = process.env.REACT_APP_API_URL;
 
 export async function summarizeText(text) {
   const res = await fetch(`${BASE_URL}/api/summarize/text/`, {
