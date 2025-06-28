@@ -1,111 +1,104 @@
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { FaExclamationTriangle, FaMicrophone, FaDownload, FaHistory, FaRedo } from "react-icons/fa";
+import { FaMicrophone, FaDownload, FaSun, FaMoon, FaGlobe } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
+import { summarizeText, summarizeFile } from "./api";
+import { useTranslation } from "react-i18next";
 
-function App() {
+export default function App() {
+  const [started, setStarted] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [text, setText] = useState("");
-  const [summary, setSummary] = useState(null);
-  const [risks, setRisks] = useState([]);
+  const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const { t, i18n } = useTranslation();
+  const listenRef = useRef(null);
+  const containerRef = useRef(null);
 
-  const saveToHistory = (s, r) => {
-    const old = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
-    localStorage.setItem("autobrief_history", JSON.stringify([{ summary: s, risks: r, date: new Date() }, ...old]));
-  };
+  useEffect(() => {
+    document.body.classList.toggle("dark", darkMode);
+  }, [darkMode]);
 
-  const handleSummarize = async () => {
-    if (!text.trim()) return alert("Please enter some text.");
-    setLoading(true);
-    setSummary(null);
-    try {
-      const res = await fetch("/api/summarize/text/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      setSummary(data.summary);
-      setRisks(data.risks || []);
-      saveToHistory(data.summary, data.risks || []);
-    } catch {
-      alert("❌ Error summarizing. Check your backend.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadFromHistory = () => {
-    const h = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
-    if (!h.length) return alert("No previous summary.");
-    setSummary(h[0].summary);
-    setRisks(h[0].risks);
-  };
-
-  const handleSpeech = () => {
-    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    rec.lang = "en-US";
-    rec.onresult = e => setText(e.results[0][0].transcript);
+  const startSpeech = () => {
+    const rec = new window.webkitSpeechRecognition();
+    rec.lang = i18n.language;
+    rec.onresult = e => setText(text + " " + e.results[0][0].transcript);
     rec.start();
   };
 
-  const exportPDF = () => {
-    html2pdf().from(document.getElementById("summary-output")).save("summary.pdf");
+  const handleSummarize = async () => {
+    if (!text && !file) return;
+    setLoading(true);
+    const res = file ? await summarizeFile(file) : await summarizeText(text);
+    setMessages(prev => [...prev, {
+      summary: res.summary,
+      risks: res.risks,
+      date: new Date().toLocaleString()
+    }]);
+    localStorage.setItem("history", JSON.stringify(messages));
+    setLoading(false);
+    containerRef.current.scrollTop = containerRef.current.scrollHeight;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-slate-800 to-gray-900 text-white p-6">
-      <motion.h1 className="text-5xl font-extrabold text-center mb-8"
-        initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }}>
-        AutoBrief.AI 🔍
-      </motion.h1>
-
-      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-lg">
-        <textarea
-          className="w-full p-4 rounded bg-white/20 text-white placeholder:text-gray-300 resize-none"
-          rows="8"
-          placeholder="Paste text or speak…"
-          value={text} onChange={e => setText(e.target.value)}
-        />
-        <div className="flex gap-3 mt-4">
-          <button onClick={handleSummarize}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-2 rounded-md font-medium flex justify-center items-center gap-2">
-            {loading ? <FaRedo className="animate-spin" /> : <FaRedo />} {loading ? "Summarizing…" : "Get Output"}
-          </button>
-          <button onClick={handleSpeech}
-            className="bg-pink-600 hover:bg-pink-700 p-2 rounded-md flex items-center justify-center">
-            <FaMicrophone />
-          </button>
-          <button onClick={loadFromHistory}
-            className="bg-gray-600 hover:bg-gray-700 p-2 rounded-md flex items-center justify-center">
-            <FaHistory />
-          </button>
+    <>
+      {!started ? (
+        <div className="h-screen bg-gradient-to-bl from-indigo-900 to-indigo-600 flex flex-col justify-center items-center">
+          <motion.h1 initial={{ y:-50, opacity:0 }} animate={{ y:0, opacity:1 }} className="text-6xl text-white font-extrabold">AutoBrief AI</motion.h1>
+          <motion.button initial={{ scale:0 }} animate={{ scale:1 }} onClick={() => setStarted(true)}
+            className="mt-8 bg-white text-indigo-700 px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition">
+            {t("Get Started")}
+          </motion.button>
         </div>
-      </div>
-
-      {summary && (
-        <div id="summary-output" className="max-w-3xl mx-auto mt-10 bg-black/30 backdrop-blur-lg p-6 rounded-xl">
-          <h2 className="text-2xl font-semibold mb-4">📝 Summary</h2>
-          <p className="text-lg">{summary}</p>
-          {risks.length > 0 && <>
-            <h3 className="mt-6 text-xl font-semibold">⚠️ Risks Identified</h3>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {risks.map((r,i)=>(
-                <span key={i}
-                  className="bg-red-500 px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                  <FaExclamationTriangle /> {r}
-                </span>
-              ))}
+      ) : (
+        <div className="min-h-screen p-6 bg-gradient-to-tr from-gray-800 to-gray-600 text-white">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex gap-4">
+              <button onClick={() => setDarkMode(!darkMode)}>
+                {darkMode ? <FaSun size={24}/> : <FaMoon size={24}/>}
+              </button>
+              <button onClick={() => i18n.changeLanguage(i18n.language === "en" ? "es" : "en")}>
+                <FaGlobe size={24}/>
+              </button>
             </div>
-          </>}
-          <button onClick={exportPDF}
-            className="mt-6 bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md flex items-center gap-2">
-            <FaDownload /> Download PDF
-          </button>
+            <h2 className="text-xl font-bold">{t("AutoBrief Chat")}</h2>
+          </div>
+
+          <div ref={containerRef} className="max-h-96 overflow-y-auto mb-4 space-y-4">
+            {messages.map((msg, idx) => (
+              <motion.div key={idx} initial={{ opacity:0 }} animate={{ opacity:1 }}
+                className="bg-gray-700 p-4 rounded-lg">
+                <p><strong>{t("Summary")}:</strong> {msg.summary}</p>
+                <p><strong>{t("Risks")}:</strong> {msg.risks.join(", ")}</p>
+                <p className="text-sm text-gray-400">{msg.date}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <textarea value={text} onChange={e => setText(e.target.value)}
+              placeholder={t("Paste text...")} className="flex-1 p-3 rounded-lg bg-gray-700 resize-none" rows={4}/>
+            <input type="file" accept=".txt,.pdf" onChange={e => setFile(e.target.files[0])}
+              className="file:bg-gray-700 file:text-white file:px-4 file:py-2 file:rounded"/>
+          </div>
+
+          <div className="flex gap-4">
+            <button onClick={handleSummarize} disabled={loading}
+              className="px-6 py-2 bg-indigo-500 rounded hover:bg-indigo-600 transition disabled:opacity-50">
+              {loading ? t("Summarizing...") : t("Summarize")}
+            </button>
+            <button onClick={() => html2pdf().from(containerRef.current).save()}
+              className="px-4 py-2 bg-green-500 rounded hover:bg-green-600 transition">
+              <FaDownload/> {t("Download PDF")}
+            </button>
+            <button onClick={startSpeech}
+              className="px-4 py-2 bg-blue-500 rounded hover:bg-blue-600 transition">
+              <FaMicrophone/> {t("Speak")}
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
-
-export default App;

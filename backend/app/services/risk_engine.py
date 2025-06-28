@@ -1,6 +1,6 @@
 RISK_KEYWORDS = [
     "lawsuit", "fraud", "hack", "cyberattack", "layoff", "regulation",
-    "compliance", "penalty", "breach", "financial loss", "downturn"
+    "compliance", "penalty", "breach", "financial loss", "downturn","risk","delay","concern"
 ]
 
 def extract_risks(summary: str):
