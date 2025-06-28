@@ -2,11 +2,8 @@ import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { FaFilePdf, FaExclamationTriangle } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
-<<<<<<< HEAD
 import { summarizeText } from "./services/api";
-=======
-import "./App.css";
->>>>>>> 1ca37639 ( Added file upload, PDF export, Watsonx integration)
+
 
 function App() {
   const [text, setText] = useState("");
