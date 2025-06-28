@@ -1,0 +1,14 @@
+/* App.css */
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+button {
+  transition: background-color 0.2s ease-in-out;
+}
