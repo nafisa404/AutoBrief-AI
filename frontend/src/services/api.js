@@ -1,37 +1,41 @@
 const BASE_URL = "https://autobrief-ai-backend.onrender.com/";
 
-export async function summarizeText(text) {
+export const summarizeText = async (text) => {
   try {
-    const response = await fetch(`${BASE_URL}/text/`, {
+    const res = await fetch("/api/summarize/text/", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text })
     });
 
-    if (!response.ok) throw new Error("Failed to summarize text");
-    return await response.json();
+    if (!res.ok) {
+      throw new Error("Failed to summarize text");
+    }
+
+    return await res.json();
   } catch (error) {
-    console.error("Error summarizing text:", error);
+    console.error("❌ Error summarizing text:", error);
     return { summary: "❌ Error summarizing", risks: [] };
   }
-}
+};
 
-export async function summarizeFile(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-
+export const summarizeFile = async (file) => {
   try {
-    const response = await fetch(`${BASE_URL}/file/`, {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/summarize/file/", {
       method: "POST",
       body: formData
     });
 
-    if (!response.ok) throw new Error("Failed to summarize file");
-    return await response.json();
+    if (!res.ok) {
+      throw new Error("Failed to summarize file");
+    }
+
+    return await res.json();
   } catch (error) {
-    console.error("Error summarizing file:", error);
+    console.error("❌ Error summarizing file:", error);
     return { summary: "❌ Error summarizing", risks: [] };
   }
-}
+};
