@@ -1,104 +1,107 @@
-import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { FaFilePdf, FaExclamationTriangle } from "react-icons/fa";
+import { useState } from "react";
+import { FaExclamationTriangle, FaMicrophone, FaDownload, FaHistory, FaRedo } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
-import { summarizeText } from "./services/api";
-
 
 function App() {
   const [text, setText] = useState("");
   const [summary, setSummary] = useState(null);
   const [risks, setRisks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const resultRef = useRef(null);
+
+  const saveToHistory = (s, r) => {
+    const old = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
+    localStorage.setItem("autobrief_history", JSON.stringify([{ summary: s, risks: r, date: new Date() }, ...old]));
+  };
 
   const handleSummarize = async () => {
+    if (!text.trim()) return alert("Please enter some text.");
     setLoading(true);
-    const res = await fetch("/api/summarize/text/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    const data = await res.json();
-    setSummary(data.summary);
-    setRisks(data.risks);
-    setLoading(false);
+    setSummary(null);
+    try {
+      const res = await fetch("/api/summarize/text/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      setSummary(data.summary);
+      setRisks(data.risks || []);
+      saveToHistory(data.summary, data.risks || []);
+    } catch {
+      alert("❌ Error summarizing. Check your backend.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFileUpload = async (e) => {
-    setLoading(true);
-    const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/summarize/file/", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    setSummary(data.summary);
-    setRisks(data.risks);
-    setLoading(false);
+  const loadFromHistory = () => {
+    const h = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
+    if (!h.length) return alert("No previous summary.");
+    setSummary(h[0].summary);
+    setRisks(h[0].risks);
   };
 
-  const downloadPDF = () => {
-    html2pdf().from(resultRef.current).save("AutoBrief-Summary.pdf");
+  const handleSpeech = () => {
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = "en-US";
+    rec.onresult = e => setText(e.results[0][0].transcript);
+    rec.start();
+  };
+
+  const exportPDF = () => {
+    html2pdf().from(document.getElementById("summary-output")).save("summary.pdf");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-slate-800 to-gray-900 text-white p-10">
-      <motion.h1
-        className="text-4xl font-bold text-center mb-6"
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        AutoBrief.AI 📄
+    <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-slate-800 to-gray-900 text-white p-6">
+      <motion.h1 className="text-5xl font-extrabold text-center mb-8"
+        initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }}>
+        AutoBrief.AI 🔍
       </motion.h1>
 
-      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-6 rounded-lg shadow-lg">
+      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-lg">
         <textarea
-          className="w-full p-4 rounded bg-white/10 text-white placeholder:text-gray-300"
-          rows="6"
-          placeholder="Paste your text or report here..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          className="w-full p-4 rounded bg-white/20 text-white placeholder:text-gray-300 resize-none"
+          rows="8"
+          placeholder="Paste text or speak…"
+          value={text} onChange={e => setText(e.target.value)}
         />
-        <input
-          type="file"
-          accept=".txt"
-          className="my-3 text-sm"
-          onChange={handleFileUpload}
-        />
-        <button
-          onClick={handleSummarize}
-          disabled={loading}
-          className="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 py-2 px-4 rounded text-white font-bold"
-        >
-          {loading ? "Summarizing..." : "Summarize Text 🚀"}
-        </button>
+        <div className="flex gap-3 mt-4">
+          <button onClick={handleSummarize}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-2 rounded-md font-medium flex justify-center items-center gap-2">
+            {loading ? <FaRedo className="animate-spin" /> : <FaRedo />} {loading ? "Summarizing…" : "Get Output"}
+          </button>
+          <button onClick={handleSpeech}
+            className="bg-pink-600 hover:bg-pink-700 p-2 rounded-md flex items-center justify-center">
+            <FaMicrophone />
+          </button>
+          <button onClick={loadFromHistory}
+            className="bg-gray-600 hover:bg-gray-700 p-2 rounded-md flex items-center justify-center">
+            <FaHistory />
+          </button>
+        </div>
       </div>
 
       {summary && (
-        <div ref={resultRef} className="max-w-3xl mx-auto mt-10 p-6 bg-black/20 rounded-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">📝 Summary</h2>
-            <button
-              onClick={downloadPDF}
-              className="bg-red-600 hover:bg-red-700 p-2 rounded text-white flex items-center gap-2"
-            >
-              <FaFilePdf /> Export PDF
-            </button>
-          </div>
+        <div id="summary-output" className="max-w-3xl mx-auto mt-10 bg-black/30 backdrop-blur-lg p-6 rounded-xl">
+          <h2 className="text-2xl font-semibold mb-4">📝 Summary</h2>
           <p className="text-lg">{summary}</p>
-
-          <h3 className="text-xl mt-6 mb-2">⚠️ Risks Identified</h3>
-          <div className="flex flex-wrap gap-2">
-            {risks.map((risk, idx) => (
-              <span key={idx} className="bg-red-500 px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                <FaExclamationTriangle /> {risk}
-              </span>
-            ))}
-          </div>
+          {risks.length > 0 && <>
+            <h3 className="mt-6 text-xl font-semibold">⚠️ Risks Identified</h3>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {risks.map((r,i)=>(
+                <span key={i}
+                  className="bg-red-500 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                  <FaExclamationTriangle /> {r}
+                </span>
+              ))}
+            </div>
+          </>}
+          <button onClick={exportPDF}
+            className="mt-6 bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md flex items-center gap-2">
+            <FaDownload /> Download PDF
+          </button>
         </div>
       )}
     </div>
