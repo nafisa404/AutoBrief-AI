@@ -1,32 +1,41 @@
 import os
 import requests
+from dotenv import load_dotenv
 
-GRANITE_API_KEY = os.getenv("GRANITE_API_KEY")
-WATSONX_URL = os.getenv("WATSONX_URL")  # e.g. https://us-south.ml.cloud.ibm.com/foundation-models/api/v1/text/generate
+load_dotenv()
 
-def summarize_with_granite(text: str) -> str:
-    if not GRANITE_API_KEY or not WATSONX_URL:
-        return "Watsonx credentials not configured."
+def summarize_text(text: str) -> dict:
+    """
+    Calls IBM Watsonx Granite 3.3 model to summarize text.
+    """
+    GRANITE_API_KEY = os.getenv("GRANITE_API_KEY")
+    if not GRANITE_API_KEY:
+        raise ValueError("Missing GRANITE_API_KEY in environment variables")
+
+    url = "https://us-south.ml.cloud.ibm.com/ml/v1/text/generation?version=2024-05-01"
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GRANITE_API_KEY}",
+        "Authorization": f"Bearer {GRANITE_API_KEY}"
     }
 
     payload = {
-        "model_id": "granite-3b-instruct",  # Watsonx Granite model
-        "inputs": f"Summarize this: {text}",
+        "model_id": "granite-3b-chat",  # Or granite-13b if allowed
+        "messages": [
+            {"role": "system", "content": "You are a helpful summarizer."},
+            {"role": "user", "content": f"Summarize this text: {text}"}
+        ],
         "parameters": {
             "decoding_method": "greedy",
-            "max_new_tokens": 300,
-            "min_new_tokens": 50
+            "max_new_tokens": 200,
+            "min_new_tokens": 20
         }
     }
 
-    try:
-        response = requests.post(WATSONX_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        return result["results"][0]["generated_text"]
-    except Exception as e:
-        return f"Error generating summary: {str(e)}"
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Watsonx API Error: {response.text}")
+
+    summary = response.json()["generated_text"]
+    return {"summary": summary}
+
