@@ -37,3 +37,4 @@ def welcome():
         "message": "👋 Welcome to AutoBrief AI Backend. Use /docs to explore the API.",
         "status": "running"
     }
+
