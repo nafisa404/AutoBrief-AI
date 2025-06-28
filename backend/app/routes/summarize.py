@@ -1,19 +1,26 @@
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from app.services.granite_client import summarize_text
-from app.services.risk_engine import extract_risks
+# backend/app/routes/summarize.py
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from app.services.granite_client import summarize_text, summarize_file
 
 router = APIRouter()
 
-class TextInput(BaseModel):
-    text: str
-
 @router.post("/text/")
-def summarize_text_route(payload: TextInput, request: Request):
+async def summarize_from_text(request: Request):
     try:
-        result = summarize_text(payload.text)
-        risks = extract_risks(result["summary"])
-        return {"summary": result["summary"], "risks": risks}
+        body = await request.json()
+        text = body.get("text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="No text provided")
+        result = summarize_text(text)
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
+@router.post("/file/")
+async def summarize_from_file(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        result = summarize_file(contents, file.filename)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File summarization failed: {str(e)}")

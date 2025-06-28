@@ -1,41 +1,37 @@
+# backend/app/services/granite_client.py
 import os
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+GRANITE_URL = os.getenv("GRANITE_URL")  # e.g., "https://us-south.ml.cloud.ibm.com"
+GRANITE_API_KEY = os.getenv("GRANITE_API_KEY")
+
+HEADERS = {
+    "Authorization": f"Bearer {GRANITE_API_KEY}",
+    "Content-Type": "application/json"
+}
 
 def summarize_text(text: str) -> dict:
-    """
-    Calls IBM Watsonx Granite 3.3 model to summarize text.
-    """
-    GRANITE_API_KEY = os.getenv("GRANITE_API_KEY")
-    if not GRANITE_API_KEY:
-        raise ValueError("Missing GRANITE_API_KEY in environment variables")
+    prompt = f"Summarize this and identify key risks:\n\n{text}"
 
-    url = "https://us-south.ml.cloud.ibm.com/ml/v1/text/generation?version=2024-05-01"
+    response = requests.post(
+        f"{GRANITE_URL}/v1/generate",
+        headers=HEADERS,
+        json={"model_id": "granite-3b-1", "input": prompt}
+    )
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {GRANITE_API_KEY}"
-    }
-
-    payload = {
-        "model_id": "granite-3b-chat",  # Or granite-13b if allowed
-        "messages": [
-            {"role": "system", "content": "You are a helpful summarizer."},
-            {"role": "user", "content": f"Summarize this text: {text}"}
-        ],
-        "parameters": {
-            "decoding_method": "greedy",
-            "max_new_tokens": 200,
-            "min_new_tokens": 20
-        }
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
     if response.status_code != 200:
-        raise Exception(f"Watsonx API Error: {response.text}")
+        raise Exception(f"Error from Watsonx: {response.text}")
 
-    summary = response.json()["generated_text"]
-    return {"summary": summary}
+    data = response.json()
+    return {
+        "summary": data.get("results", [{}])[0].get("generated_text", "No summary"),
+        "risks": extract_risks(data.get("results", [{}])[0].get("generated_text", ""))
+    }
 
+def summarize_file(content: bytes, filename: str) -> dict:
+    text = content.decode("utf-8", errors="ignore")
+    return summarize_text(text)
+
+def extract_risks(text: str) -> list:
+    keywords = ["risk", "danger", "uncertainty", "liability", "exposure"]
+    return [word for word in keywords if word.lower() in text.lower()]
