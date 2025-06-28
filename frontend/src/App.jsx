@@ -1,107 +1,107 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { FaExclamationTriangle, FaMicrophone } from "react-icons/fa";
+import { FaFilePdf, FaExclamationTriangle } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
+<<<<<<< HEAD
 import { summarizeText } from "./services/api";
+=======
+import "./App.css";
+>>>>>>> 1ca37639 ( Added file upload, PDF export, Watsonx integration)
 
 function App() {
   const [text, setText] = useState("");
   const [summary, setSummary] = useState(null);
   const [risks, setRisks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const resultRef = useRef(null);
 
   const handleSummarize = async () => {
     setLoading(true);
-    try {
-      const data = await summarizeText(text);
-      setSummary(data.summary);
-      setRisks(data.risks);
-      saveToHistory(data.summary, data.risks);
-    } catch (err) {
-      alert("Error fetching summary.");
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch("/api/summarize/text/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    setSummary(data.summary);
+    setRisks(data.risks);
+    setLoading(false);
   };
 
-  const handleVoiceInput = () => {
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.onresult = (event) => {
-      setText((prev) => prev + event.results[0][0].transcript);
-    };
-    recognition.start();
+  const handleFileUpload = async (e) => {
+    setLoading(true);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/summarize/file/", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    setSummary(data.summary);
+    setRisks(data.risks);
+    setLoading(false);
   };
 
-  const saveToHistory = (summary, risks) => {
-    const old = JSON.parse(localStorage.getItem("autobrief_history") || "[]");
-    const updated = [{ summary, risks, date: new Date() }, ...old];
-    localStorage.setItem("autobrief_history", JSON.stringify(updated));
-  };
-
-  const exportPDF = () => {
-    const element = document.getElementById("summary-section");
-    html2pdf().from(element).save("AutoBrief_Summary.pdf");
+  const downloadPDF = () => {
+    html2pdf().from(resultRef.current).save("AutoBrief-Summary.pdf");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-tr from-gray-900 via-slate-800 to-gray-900 text-white p-10">
       <motion.h1
         className="text-4xl font-bold text-center mb-6"
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        AutoBrief.AI 🔍
+        AutoBrief.AI 📄
       </motion.h1>
 
-      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-6 rounded-lg">
+      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-6 rounded-lg shadow-lg">
         <textarea
-          className="w-full p-4 bg-transparent border border-gray-400 rounded text-white"
-          rows="8"
-          placeholder="Paste news, transcripts, or reports..."
+          className="w-full p-4 rounded bg-white/10 text-white placeholder:text-gray-300"
+          rows="6"
+          placeholder="Paste your text or report here..."
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <div className="flex gap-4 mt-4">
-          <button
-            onClick={handleSummarize}
-            className="bg-indigo-500 hover:bg-indigo-600 w-full text-white font-bold py-2 rounded"
-          >
-            {loading ? "Summarizing..." : "Summarize 🚀"}
-          </button>
-          <button
-            onClick={handleVoiceInput}
-            className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded text-white"
-            title="Dictate using voice"
-          >
-            <FaMicrophone />
-          </button>
-        </div>
+        <input
+          type="file"
+          accept=".txt"
+          className="my-3 text-sm"
+          onChange={handleFileUpload}
+        />
+        <button
+          onClick={handleSummarize}
+          disabled={loading}
+          className="mt-2 w-full bg-indigo-500 hover:bg-indigo-600 py-2 px-4 rounded text-white font-bold"
+        >
+          {loading ? "Summarizing..." : "Summarize Text 🚀"}
+        </button>
       </div>
 
       {summary && (
-        <div id="summary-section" className="max-w-3xl mx-auto mt-8 p-6 bg-black/30 rounded-lg">
-          <h2 className="text-2xl font-bold mb-2">📝 Summary</h2>
+        <div ref={resultRef} className="max-w-3xl mx-auto mt-10 p-6 bg-black/20 rounded-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">📝 Summary</h2>
+            <button
+              onClick={downloadPDF}
+              className="bg-red-600 hover:bg-red-700 p-2 rounded text-white flex items-center gap-2"
+            >
+              <FaFilePdf /> Export PDF
+            </button>
+          </div>
           <p className="text-lg">{summary}</p>
 
-          <h3 className="text-xl mt-6 mb-2">⚠️ Risks</h3>
+          <h3 className="text-xl mt-6 mb-2">⚠️ Risks Identified</h3>
           <div className="flex flex-wrap gap-2">
-            {risks.map((r, idx) => (
-              <span
-                key={idx}
-                className="bg-red-500 px-3 py-1 rounded-full text-sm text-white flex items-center gap-1"
-              >
-                <FaExclamationTriangle /> {r}
+            {risks.map((risk, idx) => (
+              <span key={idx} className="bg-red-500 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                <FaExclamationTriangle /> {risk}
               </span>
             ))}
           </div>
-
-          <button
-            onClick={exportPDF}
-            className="mt-6 bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
-          >
-            📄 Export as PDF
-          </button>
         </div>
       )}
     </div>
