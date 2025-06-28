@@ -1,4 +1,4 @@
-const BASE_URL = "https://autobrief-backend.onrender.com/api/summarize";
+const BASE_URL = "https://autobrief-ai-backend.onrender.com/";
 
 export async function summarizeText(text) {
   try {
