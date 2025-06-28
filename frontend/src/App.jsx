@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaMicrophone, FaDownload, FaSun, FaMoon, FaGlobe } from "react-icons/fa";
 import html2pdf from "html2pdf.js";
-import { summarizeText, summarizeFile } from "./api";
+import { summarizeText, summarizeFile } from "./services/api";
 import { useTranslation } from "react-i18next";
 
 export default function App() {
