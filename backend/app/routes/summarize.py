@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.services.granite_client import summarize_text, summarize_file
-from app.utils.risk_engine import extract_risks
+from app.services.risk_engine import extract_risks
 
 router = APIRouter()
 
