@@ -1,37 +1,52 @@
-# backend/app/services/granite_client.py
 import os
 import requests
+from dotenv import load_dotenv
 
-GRANITE_URL = os.getenv("GRANITE_URL")  # e.g., "https://us-south.ml.cloud.ibm.com"
-GRANITE_API_KEY = os.getenv("GRANITE_API_KEY")
+load_dotenv()
 
-HEADERS = {
-    "Authorization": f"Bearer {GRANITE_API_KEY}",
+API_KEY = os.getenv("GRANITE_API_KEY")
+PROJECT_ID = os.getenv("PROJECT_ID")
+MODEL_ID = os.getenv("MODEL_ID", "granite-13b-chat-v2")
+
+BASE_URL = f"https://us-south.ml.cloud.ibm.com/ml/v1-beta/projects/{PROJECT_ID}/model-inference/{MODEL_ID}"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json"
 }
 
-def summarize_text(text: str) -> dict:
-    prompt = f"Summarize this and identify key risks:\n\n{text}"
-
-    response = requests.post(
-        f"{GRANITE_URL}/v1/generate",
-        headers=HEADERS,
-        json={"model_id": "granite-3b-1", "input": prompt}
-    )
-
-    if response.status_code != 200:
-        raise Exception(f"Error from Watsonx: {response.text}")
-
-    data = response.json()
-    return {
-        "summary": data.get("results", [{}])[0].get("generated_text", "No summary"),
-        "risks": extract_risks(data.get("results", [{}])[0].get("generated_text", ""))
+def summarize_text(text: str):
+    payload = {
+        "model_id": MODEL_ID,
+        "input": [
+            {
+                "role": "user",
+                "content": f"Summarize the following and list risks:\n{text}"
+            }
+        ],
+        "parameters": {
+            "decoding_method": "greedy",
+            "max_new_tokens": 300,
+            "min_new_tokens": 20
+        }
     }
 
-def summarize_file(content: bytes, filename: str) -> dict:
-    text = content.decode("utf-8", errors="ignore")
-    return summarize_text(text)
+    try:
+        response = requests.post(BASE_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        output = result["results"][0]["generated_text"]
 
-def extract_risks(text: str) -> list:
-    keywords = ["risk", "danger", "uncertainty", "liability", "exposure"]
-    return [word for word in keywords if word.lower() in text.lower()]
+        # Optional: parse risks from text
+        risks = extract_risks(output)
+
+        return {"summary": output, "risks": risks}
+    except Exception as e:
+        print("ERROR in summarize_text:", e)
+        return {"summary": "❌ Error summarizing", "risks": []}
+
+def extract_risks(text):
+    # basic placeholder, improve with NLP later
+    risk_keywords = ["risk", "issue", "concern", "problem", "danger", "threat"]
+    found = [word for word in risk_keywords if word in text.lower()]
+    return list(set(found))
