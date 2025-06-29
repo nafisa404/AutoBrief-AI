@@ -1,26 +1,31 @@
-# backend/app/routes/summarize.py
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.services.granite_client import summarize_text, summarize_file
+from app.utils.risk_engine import extract_risks
 
 router = APIRouter()
 
+
 @router.post("/text/")
-async def summarize_from_text(request: Request):
+async def summarize_text_route(payload: dict):
     try:
-        body = await request.json()
-        text = body.get("text", "")
+        text = payload.get("text")
         if not text:
-            raise HTTPException(status_code=400, detail="No text provided")
-        result = summarize_text(text)
-        return result
+            raise HTTPException(status_code=400, detail="Text is required.")
+        summary = summarize_text(text)
+        risks = extract_risks(summary)
+        return {"summary": summary, "risks": risks}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+        print("❌ Text summary error:", e)
+        raise HTTPException(status_code=500, detail="Text summarization failed.")
+
 
 @router.post("/file/")
-async def summarize_from_file(file: UploadFile = File(...)):
+async def summarize_file_route(file: UploadFile = File(...)):
     try:
         contents = await file.read()
-        result = summarize_file(contents, file.filename)
-        return result
+        summary = summarize_file(file.filename, contents)
+        risks = extract_risks(summary)
+        return {"summary": summary, "risks": risks}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File summarization failed: {str(e)}")
+        print("❌ File summary error:", e)
+        raise HTTPException(status_code=500, detail="File summarization failed.")

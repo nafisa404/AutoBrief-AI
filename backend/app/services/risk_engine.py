@@ -1,12 +1,3 @@
-RISK_KEYWORDS = [
-    "lawsuit", "fraud", "hack", "cyberattack", "layoff", "regulation",
-    "compliance", "penalty", "breach", "financial loss", "downturn","risk","delay","concern"
-]
-
-def extract_risks(summary: str):
-    detected = []
-    lowered = summary.lower()
-    for keyword in RISK_KEYWORDS:
-        if keyword in lowered:
-            detected.append(keyword)
-    return list(set(detected))
+def extract_risks(text):
+    keywords = ["legal", "risk", "fraud", "compliance", "unauthorized", "penalty"]
+    return [kw for kw in keywords if kw in text.lower()]
