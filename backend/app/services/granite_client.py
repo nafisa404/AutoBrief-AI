@@ -5,48 +5,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("GRANITE_API_KEY")
-PROJECT_ID = os.getenv("PROJECT_ID")
-MODEL_ID = os.getenv("MODEL_ID", "granite-13b-chat-v2")
+PROJECT_ID = os.getenv("GRANITE_PROJECT_ID")
+MODEL_ID = os.getenv("GRANITE_MODEL_ID", "granite-13b-chat-v2")
 
-BASE_URL = f"https://us-south.ml.cloud.ibm.com/ml/v1-beta/projects/{PROJECT_ID}/model-inference/{MODEL_ID}"
+BASE_URL = f"https://us-south.ml.cloud.ibm.com/ml/v1-beta/generation/text?version=2024-05-29"
 
 headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {API_KEY}"
 }
 
-def summarize_text(text: str):
+def summarize_text_ibm(prompt: str):
     payload = {
         "model_id": MODEL_ID,
-        "input": [
-            {
-                "role": "user",
-                "content": f"Summarize the following and list risks:\n{text}"
-            }
-        ],
+        "project_id": PROJECT_ID,
+        "inputs": [f"Summarize this: {prompt}"],
         "parameters": {
             "decoding_method": "greedy",
-            "max_new_tokens": 300,
-            "min_new_tokens": 20
+            "max_new_tokens": 150
         }
     }
 
     try:
         response = requests.post(BASE_URL, headers=headers, json=payload)
         response.raise_for_status()
-        result = response.json()
-        output = result["results"][0]["generated_text"]
-
-        # Optional: parse risks from text
-        risks = extract_risks(output)
-
-        return {"summary": output, "risks": risks}
+        data = response.json()
+        return data["results"][0]["generated_text"]
     except Exception as e:
-        print("ERROR in summarize_text:", e)
-        return {"summary": "❌ Error summarizing", "risks": []}
-
-def extract_risks(text):
-    # basic placeholder, improve with NLP later
-    risk_keywords = ["risk", "issue", "concern", "problem", "danger", "threat"]
-    found = [word for word in risk_keywords if word in text.lower()]
-    return list(set(found))
+        print("Error:", e)
+        return None
